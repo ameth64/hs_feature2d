@@ -1,0 +1,6 @@
+gtest yong
+jpeg_turbo yong
+png yong
+tiff yong
+zlib yong
+hs_image_io yong
