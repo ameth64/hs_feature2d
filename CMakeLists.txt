@@ -11,7 +11,6 @@ hs_project(hs_feature2d)
 
 hs_parse_dependencies("dependencies.txt")
 
-add_subdirectory(include)
 add_subdirectory("src")
 add_subdirectory("unit_test")
 
