@@ -1,0 +1,1 @@
+A lib of standard SIFT and other image feature-detecting algorithms.
