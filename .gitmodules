@@ -1,0 +1,12 @@
+[submodule "cmake"]
+	path = cmake
+	url = git@code.nnhuishi.com:hsdev/hslib_cmake.git
+	branch = yong
+[submodule "ci_script/hslib_ci_script"]
+	path = ci_script/hslib_ci_script
+	url = git@code.nnhuishi.com:hsdev/hslib_ci_script.git
+	branch = master
+[submodule "test_data"]
+	path = test_data
+	url = git@code.nnhuishi.com:hsdev/hs_image_io_test_data.git
+	branch = master
