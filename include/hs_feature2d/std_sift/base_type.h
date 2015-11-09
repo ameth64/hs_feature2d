@@ -19,6 +19,7 @@
 #  endif
 #endif
 
+//强制inline定义
 #ifdef _MSC_VER // for MSVC
 #define forceinline __forceinline
 #elif defined __GNUC__ // for gcc on Linux/Apple OS X
@@ -27,7 +28,7 @@
 #define forceinline
 #endif
 
-
+//地址对齐定义
 #ifdef __GNUC__
 #  define _DECL_ALIGNED(x) __attribute__ ((aligned (x)))
 #elif defined _MSC_VER
