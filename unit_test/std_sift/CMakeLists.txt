@@ -4,6 +4,8 @@ set(STD_SIFT_UTEST_SOURCES
   )
 hslib_add_utest(std_sift SOURCES ${STD_SIFT_UTEST_SOURCES})
 yong_add_dependence(hs_feature2d std_sift_utest
+#待测试项目的库
+  DEPENDENT_LOCAL_LIBS std_sift
   DEPENDENT_PROJECT jpeg_turbo
     DEPENDENT_LIBS jpeg_turbo
   DEPENDENT_PROJECT png

@@ -1,6 +1,6 @@
 set(STD_SIFT_SOURCES
   "image_helper.cpp"
-  "run_main.cpp"
+  "std_sift.cpp"
   )
 
 hslib_add_library(std_sift
