@@ -115,7 +115,8 @@ namespace
 	//	ASSERT_EQ(0, ih.SaveImage(jpeg_gs_path, img8i));
 	//}
 
-	TEST(TestImageHelper, GaussianBlurTest)
+#define HS_GAUSSIAN_LOOP 1000
+	TEST(TestImageHelper, GaussianBlur_HS_Test)
 	{
 		clock_t tt = clock();
 
@@ -147,13 +148,13 @@ namespace
 		t0 = clock();
 		hs::feature2d::GaussianFilter gf(1.6, 4, 4);
 		//img_blur.CreateImage(img_32f.width(), img_32f.height(), img_32f.channel(), img_32f.bit_depth(), img_32f.color_type());
-		int i = 0, len = 100;
+		int i = 0, len = HS_GAUSSIAN_LOOP;
 		for (; i < len; i++)
 		{
 			res = gf.Apply<float, float>(img_32f, img_blur);
 		}
 		t1 = clock() - t0;
-		std::cout << t1 <<" ms in blur process of "<<len<<" times."<<std::endl;
+		std::cout << t1 <<" ms in "<<len<<" times bluring process."<<std::endl;
 		img_blur.Convert2Type<hs::feature2d::Mat::Byte, float>(img8i);
 
 		t0 = clock();
@@ -167,7 +168,7 @@ namespace
 	}
 
 	//OpenCV的高斯模糊测试
-	TEST(TestImageHelper, GaussianBlurOpenCVTest)
+	TEST(TestImageHelper, GaussianBlur_OpenCV_Test)
 	{		
 		clock_t tt = clock();
 		std::string data_path = "../../test_data/";
@@ -192,14 +193,14 @@ namespace
 
 		t0 = clock();
 		cvgry.convertTo(cv32f, CV_32F, 1, 0);
-		int i = 0, len = 100;
+		int i = 0, len = HS_GAUSSIAN_LOOP;
 		for (; i < len; i++)
 		{
 			cv::GaussianBlur(cv32f, cvres, ksize, 1.6);
 			//cv::GaussianBlur(cvgry, cvres2, ksize, 1.6);
 		}
 		t1 = clock() - t0;
-		std::cout << t1 << " ms in blur process of " << len << " times." << std::endl;
+		std::cout << t1 << " ms in " << len << " times bluring process." << std::endl;
 
 		t0 = clock();
 		ASSERT_EQ(true, cv::imwrite(jpeg_cv_path.c_str(), cvres));
