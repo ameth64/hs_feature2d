@@ -60,7 +60,14 @@ void GaussianFilter::initMask()
 }
 
 
-
+void GaussianFilter::SetMask(float sx, float sy, int w, int h)
+{
+	sigmaX_ = (sx > FLT_EPSILON) ? sx : 0.6f;
+	sigmaY_ = (sy > FLT_EPSILON) ? sy : sigmaX_;
+	width_ = (w > 0) ? w : int(3 * sigmaX_);
+	height_ = (h > 0) ? h : int(3 * sigmaY_);
+	initMask();
+}
 
 
 

@@ -1,4 +1,5 @@
 #include <algorithm>
+#include "hs_feature2d/std_sift/filter.h"
 #include "hs_feature2d/std_sift/std_sift.hpp"
 
 
@@ -131,6 +132,7 @@ void StdSIFT::BuildGaussianPyramid(const Image& base, std::vector<Image>& pyr, i
 		sig[i] = std::sqrt(sig_total*sig_total - sig_prev*sig_prev);
 	}
 
+	hs::feature2d::GaussianFilter gsf;
 	for (int o = 0; o < nOctaves; o++)
 	{
 		for (int i = 0; i < i_octave_layer + 3; i++)
@@ -150,7 +152,7 @@ void StdSIFT::BuildGaussianPyramid(const Image& base, std::vector<Image>& pyr, i
 			{
 				const Image& src = pyr[o*(i_octave_layer + 3) + i - 1];
 				//GaussianBlur(src, dst, Size(), sig[i], sig[i]);
-				hs::feature2d::GaussianFilter gsf(sig[i]);
+				gsf.SetMask(sig[i]);
 				gsf.Apply<SIFT_WORK_TYPE, SIFT_WORK_TYPE>(src, dst);
 			}
 		}

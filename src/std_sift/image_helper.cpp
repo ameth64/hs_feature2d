@@ -15,7 +15,7 @@ int ImageHelper::Rgb2Gray(const hs::imgio::whole::ImageData& img_input, hs::imgi
 		return -1;
 	}
 	int w = img_input.width(), h = img_input.height();
-	int res = img_output.CreateImage(h, w, 1, 8, hs::imgio::whole::ImageData::IMAGE_GRAYSCALE);
+	int res = img_output.CreateImage(h, w, 1, 8, hs::imgio::whole::ImageData::IMAGE_GRAYSCALE, true);
 	if (res != hs::imgio::whole::ImageData::IMAGE_DATA_NO_ERROR)
 	{
 		return -1;

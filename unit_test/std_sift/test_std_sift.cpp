@@ -5,6 +5,7 @@
 #include <strstream>
 
 #include "gtest/gtest.h"
+#include "hs_feature2d/std_sift/filter.h"
 #include "hs_feature2d/std_sift/image_helper.hpp"
 #include "hs_feature2d/std_sift/std_sift.hpp"
 
@@ -146,8 +147,8 @@ namespace
 		ih.SaveImage(jpeg_blr8i_path, img8i);
 
 		t0 = clock();
-		hs::feature2d::GaussianFilter gf(1.6, 4, 4);
-		//img_blur.CreateImage(img_32f.width(), img_32f.height(), img_32f.channel(), img_32f.bit_depth(), img_32f.color_type());
+		hs::feature2d::GaussianFilter gf(0.6);
+		gf.SetMask(1.6, 0.0f, 4, 4);
 		int i = 0, len = HS_GAUSSIAN_LOOP;
 		for (; i < len; i++)
 		{
@@ -197,7 +198,6 @@ namespace
 		for (; i < len; i++)
 		{
 			cv::GaussianBlur(cv32f, cvres, ksize, 1.6);
-			//cv::GaussianBlur(cvgry, cvres2, ksize, 1.6);
 		}
 		t1 = clock() - t0;
 		std::cout << t1 << " ms in " << len << " times bluring process." << std::endl;

@@ -11,7 +11,6 @@
 #include "hs_image_io/whole_io/image_data.hpp"
 #include "hs_image_io/whole_io/image_io.hpp"
 #include "hs_feature2d/std_sift/base_type.h"
-//#include "hs_feature2d/std_sift/numeric_solver.hpp"
 #include "hs_feature2d/std_sift/ArrayHelper.h"
 
 
@@ -302,7 +301,7 @@ public:
 		return mask_w;
 	};
 
-	void SetMask();
+	void SetMask(float sx, float sy = 0.0f, int w = 0, int h = 0);
 
 	//主要操作入口
 	template<typename ST, typename DT = float>
@@ -413,7 +412,7 @@ private:
 
 	int state_;
 	HeapMgr<float> mask_w, mask_h;
-	HeapMgr<int> imask_w; //用于sse优化的中间模板
+	HeapMgr<int> imask_w; //用于8位-32位sse优化的中间模板
 	float sigmaX_ = 0.6, sigmaY_ = 0.6;
 	float su_ = 0, sv_ = 0; //归一化参数
 	int width_ = 2, height_ = 2;
