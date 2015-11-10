@@ -1,6 +1,6 @@
 #include <vector>
 #include <algorithm>
-#include "hs_feature2d/std_sift/base_type.h"
+#include "hs_feature2d/std_sift/base_type.hpp"
 
 namespace hs{
 namespace feature2d{

@@ -1,5 +1,4 @@
 #include <algorithm>
-#include "hs_feature2d/std_sift/filter.h"
 #include "hs_feature2d/std_sift/std_sift.hpp"
 
 
@@ -28,7 +27,7 @@ int StdSIFT::createInitialImage(Image& src, Image& dst, bool doubleImageSize, fl
 	int res = 0;
 	Image gray, gray_fpt;
 	if (src.channel() == 3 || src.channel() == 4)
-		res += hs::feature2d::ImageHelper::Rgb2Gray(src, gray);
+		res += hs::feature2d::ImageHelper::Rgb2Gray<Image::Byte, Image::Byte>(src, gray);
 	else
 		gray.DeepCopy(src);
 	res += gray.Convert2Type<SIFT_WORK_TYPE>(gray_fpt);
@@ -434,9 +433,9 @@ float StdSIFT::CalcOrientationHist(const Mat& img, Point pt, int radius, float s
 	len = k;
 
 	// compute gradient values, orientations and the weights over the pixel neighborhood
-	exp(W, W, len);
-	fastAtan2(Y, X, Ori, len, true);
-	magnitude(X, Y, Mag, len);
+	hs::feature2d::exp(W, W, len);
+	hs::feature2d::fastAtan2(Y, X, Ori, len, true);
+	hs::feature2d::magnitude(X, Y, Mag, len);
 
 	for (k = 0; k < len; k++)
 	{
@@ -520,9 +519,9 @@ void StdSIFT::calcSIFTDescriptor(const Mat& img, Point2f ptf, float ori, float s
 		}
 
 	len = k;
-	fastAtan2(Y, X, Ori, len, true);
-	magnitude(X, Y, Mag, len);
-	exp(W, W, len);
+	hs::feature2d::fastAtan2(Y, X, Ori, len, true);
+	hs::feature2d::magnitude(X, Y, Mag, len);
+	hs::feature2d::exp(W, W, len);
 
 	for (k = 0; k < len; k++)
 	{

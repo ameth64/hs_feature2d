@@ -2,9 +2,10 @@
 #define _HS_FEATURE2D_STD_SIFT_STD_SIFT_HPP_
 
 #include <vector>
-#include "hs_feature2d/std_sift/base_type.h"
+//#include "hs_feature2d//std_sift/matrix.hpp"
+//#include "hs_feature2d/std_sift/filter.hpp"
 #include "hs_feature2d/std_sift/image_helper.hpp"
-#include "hs_feature2d//std_sift/matrix.hpp"
+
 
 namespace hs
 {

@@ -8,7 +8,7 @@
 
 #include "hs_feature2d/config/hs_config.hpp"
 #include "hs_image_io/whole_io/image_data.hpp"
-#include "hs_feature2d/std_sift/base_type.h"
+#include "hs_feature2d/std_sift/base_type.hpp"
 #include "hs_feature2d/std_sift/numeric_solver.hpp"
 
 

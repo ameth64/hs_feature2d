@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <float.h>
 #include <vector>
 
@@ -365,8 +366,6 @@ template<typename _Tp> static inline _Tp saturate_cast(double v)   { return _Tp(
 template<typename _Tp> static inline _Tp saturate_cast(int64 v)    { return _Tp(v); }
 /** @overload */
 template<typename _Tp> static inline _Tp saturate_cast(uint64 v)   { return _Tp(v); }
-
-
 
 
 template<typename T> class Point2D_T

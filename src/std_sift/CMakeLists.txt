@@ -1,5 +1,8 @@
 set(STD_SIFT_SOURCES
+  "filter.cpp"
   "image_helper.cpp"
+  "keypoint.cpp"
+  "numeric_solver.cpp"
   "std_sift.cpp"
   )
 

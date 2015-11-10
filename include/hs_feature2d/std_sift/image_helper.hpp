@@ -6,13 +6,15 @@
 #include <math.h>
 #include <assert.h>
 #include <emmintrin.h>
+#include <omp.h>
 
 #include "hs_feature2d/config/hs_config.hpp"
 #include "hs_image_io/whole_io/image_data.hpp"
 #include "hs_image_io/whole_io/image_io.hpp"
-#include "hs_feature2d/std_sift/base_type.h"
-#include "hs_feature2d/std_sift/ArrayHelper.h"
-#include "hs_feature2d/std_sift/filter.h"
+#include "hs_feature2d/std_sift/base_type.hpp"
+#include "hs_feature2d/std_sift/matrix.hpp"
+#include "hs_feature2d/std_sift/ArrayHelper.hpp"
+#include "hs_feature2d/std_sift/filter.hpp"
 
 
 //
@@ -49,7 +51,63 @@ public:
 	~ImageHelper(){};
 
 	// RGB与灰度图转换
-	static int Rgb2Gray(const hs::imgio::whole::ImageData& img_input, hs::imgio::whole::ImageData& img_output);
+	template<typename ST, typename DT>
+	static inline int rowRgb2Gray(ST* src, DT* dst, int row_width)
+	{
+		int i = 0;
+		for (; i < row_width; i++)
+		{
+			dst[i] = saturate_cast<DT>(src[i * 3] * 0.2989 + src[i * 3 + 1] * 0.5870 + src[i * 3 + 2] * 0.1140);
+		}
+	}
+
+	template<typename ST, typename DT>
+	static int Rgb2Gray(hs::imgio::whole::ImageData& img_input, hs::imgio::whole::ImageData& img_output)
+	{
+		if (img_input.channel() != 3)
+		{
+			// nothing happens if the channel !=3
+			return -1;
+		}
+		int w = img_input.width(), h = img_input.height();
+		int res = img_output.CreateImage(h, w, 1, sizeof(DT)*8, hs::imgio::whole::ImageData::IMAGE_GRAYSCALE);
+		if (res != hs::imgio::whole::ImageData::IMAGE_DATA_NO_ERROR)
+		{
+			return -1;
+		}
+		//根据以下公式转换为灰度(参考MATLAB的rgb2gray函数)
+		// 0.2989 * R + 0.5870 * G + 0.1140 * B
+		DT* _outbuff = img_output.GetBufferT<DT>();
+		ST* _inbuff = img_input.GetBufferT<ST>();
+
+		int len = w * h, i = 0;
+#ifdef _OPENMP
+#pragma omp parallel for
+		for (i = 0; i < len; i++)
+		{
+			//if (i == 0)
+			//	std::cout << "omp_get_num_threads = " << omp_get_num_threads() << std::endl;
+			_outbuff[i] = saturate_cast<DT>(_inbuff[i * 3] * 0.2989 + _inbuff[i * 3 + 1] * 0.5870 + _inbuff[i * 3 + 2] * 0.1140);
+		}
+#else
+		for (i = 0; i < len; i++)
+		{
+			_outbuff[i] = saturate_cast<DT>(_inbuff[i * 3] * 0.2989 + _inbuff[i * 3 + 1] * 0.5870 + _inbuff[i * 3 + 2] * 0.1140);
+		}
+		//for (int i = 0; i < h; i++)
+		//{
+		//	for (int j = 0; j < w; j++)
+		//	{
+		//		R = img_input.GetByte(i, j, 0);
+		//		G = img_input.GetByte(i, j, 1);
+		//		B = img_input.GetByte(i, j, 2);
+		//		tmp = hs::imgio::whole::ImageData::Byte(0.2989 * R + 0.5870 * G + 0.1140 * B);
+		//		_outbuff[i * w + j] = tmp;
+		//	}
+		//}
+#endif // _OPENMP
+		return int(OprError::OPR_OK);
+	};
 
 	// 图像缩放
 	template<typename T = hs::imgio::whole::ImageData::Byte>
@@ -142,7 +200,61 @@ public:
 		return res;
 	};
 
-	//高斯差分运算
+	//数据类型转换
+private:
+	template<typename ST, typename DT> static inline void rowConvert(ST* src, DT* dst, int row_width)
+	{
+		int j = 0;
+		for (; j <= row_width - 4; j += 4)
+		{
+			dst[j] = saturate_cast<DT>(src[j]);
+			dst[j + 1] = saturate_cast<DT>(src[j + 1]);
+			dst[j + 2] = saturate_cast<DT>(src[j + 2]);
+			dst[j + 3] = saturate_cast<DT>(src[j + 3]);
+		}
+		for (; j < row_width; j++)
+		{
+			dst[j] = saturate_cast<DT>(src[j]);
+		}
+	}
+
+public:
+	template<typename ST, typename DT>
+	static void ConvertDataType(const hs::imgio::whole::ImageData& img_src, hs::imgio::whole::ImageData& img_dst)
+	{
+		size_t w = img_src.width(), h = img_src.height(), cn = img_src.channel();
+		img_dst.CreateImage(w, h, cn, sizeof(DT) * 8, img_src.color_type());
+		ST* src = (ST*)img_src.GetBuffer();
+		DT* dst = img_dst.GetBufferT<DT>();
+		
+		int row_width = cn * w, i;
+
+#ifdef _OPENMP
+#pragma omp parallel for
+		for (i = 0; i < h; i++)
+		{
+			rowConvert<ST, DT>(src + i*row_width, dst + i*row_width, row_width);
+		}
+#else
+		for (i = 0; i < h; i++, src += row_width, dst += row_width)
+		{
+			for (int j = 0; j <= row_width - 4; j += 4)
+			{
+				dst[j] = saturate_cast<DT>(src[j]);
+				dst[j + 1] = saturate_cast<DT>(src[j + 1]);
+				dst[j + 2] = saturate_cast<DT>(src[j + 2]);
+				dst[j + 3] = saturate_cast<DT>(src[j + 3]);
+			}
+			for (; j < row_width; j++)
+			{
+				dst[j] = saturate_cast<DT>(src[j]);
+			}
+		}
+
+#endif // _OPENMP
+	};
+
+	//差分运算, 用于生成DOG高斯差分金字塔
 	template<typename T>
 	static int Subtract(const Image& src1, const Image& src2, Image& dst)
 	{
@@ -162,21 +274,9 @@ public:
 		return res;
 	}
 
-	// 高斯模糊, 构造一个GaussMgr类, 并使用其模板向量按高斯卷积的分离形式计算模糊后的图像
-	int GaussianBlur(double sigma, int mw, int mh, 
-		hs::imgio::whole::ImageData& img_input, hs::imgio::whole::ImageData& img_output);
-
-	// 根据内存访问局部性原则优化的高斯模糊
-	int GaussianBlurAccl(double sigma, int mw, int mh,
-		hs::imgio::whole::ImageData& img_input, hs::imgio::whole::ImageData& img_output);
-
-	// SSE优化的高斯模糊验证
-	int GaussianBlurSSE(double sigma, int mw, int mh,
-		hs::imgio::whole::ImageData& img_input, hs::imgio::whole::ImageData& img_output);
 
 private:
-	int sseRowFilter(const hs::imgio::whole::ImageData::PByte _src, hs::imgio::whole::ImageData::PByte dst, 
-		int w, int cn, int* _kx, int mw);
+
 
 };
 

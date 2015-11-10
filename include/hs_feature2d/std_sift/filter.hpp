@@ -10,8 +10,8 @@
 #include "hs_feature2d/config/hs_config.hpp"
 #include "hs_image_io/whole_io/image_data.hpp"
 #include "hs_image_io/whole_io/image_io.hpp"
-#include "hs_feature2d/std_sift/base_type.h"
-#include "hs_feature2d/std_sift/ArrayHelper.h"
+#include "hs_feature2d/std_sift/base_type.hpp"
+#include "hs_feature2d/std_sift/ArrayHelper.hpp"
 
 
 namespace hs{
@@ -120,7 +120,7 @@ template<> struct RowFilter<float, float>
 	forceinline void operator()(float* srcbuff, float* dst, float* mask_ptr, int& kw, int& w, int& cn)
 	{
 #ifdef  _USE_SSE2_
-		int row_width = w*cn, i, j, k, _ksize = kw * 2 + 1;
+		int row_width = w*cn, j, k, _ksize = kw * 2 + 1;
 		float* src;
 		__m128 f, s0, s1, x0, x1;
 		for (j = 0; j <= row_width - 8; j += 8)

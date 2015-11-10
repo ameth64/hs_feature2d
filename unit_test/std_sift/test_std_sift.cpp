@@ -5,7 +5,6 @@
 #include <strstream>
 
 #include "gtest/gtest.h"
-#include "hs_feature2d/std_sift/filter.h"
 #include "hs_feature2d/std_sift/image_helper.hpp"
 #include "hs_feature2d/std_sift/std_sift.hpp"
 
@@ -81,42 +80,82 @@ namespace
 		}
 	};
 
-	//TEST(TestImageHelper, Rgb2GrayTest)
-	//{
-	//	std::string data_path = "../../test_data/";
-	//	std::string jpeg_path = data_path + "Lenna.jpg"; //输入图片
-	//	std::string jpeg_gray_path = "Lenna_gray.jpg"; //输出图片
-	//	std::string jpeg_zoomin_path = "Lenna_zoomIn.jpg"; //输出图片
-	//	std::string jpeg_zoomout_path = "Lenna_zoomOut.jpg"; //输出图片
-	//	std::string jpeg_gs_path = "Lenna_zoomInGS.jpg"; //输出图片
+#define HS_GAUSSIAN_LOOP 10
+#define TEST_DATA_PATH "../../test_data/"
 
-	//	hs::imgio::whole::ImageData img_src, img_src2x, img_src1x2, img_gray, img32f, img32g, img8i;
+	TEST(TestImageHelper, Rgb2GrayTest)
+	{
+		std::string data_path = TEST_DATA_PATH;
+		std::string jpeg_path = data_path + "Lenna.jpg"; //输入图片
+		std::string jpeg_gray = "Lenna_gray.jpg";
 
-	//	hs::feature2d::ImageHelper ih;
-	//	ASSERT_EQ(0, ih.LoadImage(jpeg_path, img_src));
+		hs::imgio::whole::ImageData img_src, img_src2x, img_src1x2, img_gray, img32f, img32g, img8i;
+		hs::feature2d::ImageHelper ih;
+		ASSERT_EQ(0, ih.LoadImage(jpeg_path, img_src));
 
-	//	int res = ih.Rgb2Gray(img_src,img_gray);
-	//	res += img_gray.Convert2Type<float>(img32f);
-	//	// resize test
-	//	res += ih.Resize<float>(img32f, img_src2x, 2 * img_src.width(), 2 * img_src.height(), hs::feature2d::ImageHelper::INTER_LINEAR);
+		clock_t t0, t1;
+		int res = 0;
 
-	//	// resize test
-	//	res += ih.Resize<float>(img32f, img_src1x2, 0.5 * img_src.width(), 0.5 * img_src.height(), hs::feature2d::ImageHelper::INTER_NEAREST);
-	//	
-	//	ASSERT_EQ(0, res);
-	//	ASSERT_EQ(0, ih.SaveImage(jpeg_gray_path, img_gray));
+		//灰度转换压测
+		t0 = clock();
+		for (int i = 0; i < 1000; i++)
+		{
+			res += ih.Rgb2Gray<hs::imgio::whole::ImageData::Byte, hs::imgio::whole::ImageData::Byte>(img_src, img_gray);
+		}
+		t1 = clock() - t0;
+		std::cout << t1 << " ms in gray-scale converting" << std::endl;
 
-	//	img_src2x.Convert2Type<hs::imgio::whole::ImageData::Byte, float>(img8i);
-	//	ASSERT_EQ(0, ih.SaveImage(jpeg_zoomin_path, img8i));
+		ASSERT_EQ(0, res);
+		ASSERT_EQ(0, ih.SaveImage(jpeg_gray, img_gray));
 
-	//	img_src1x2.Convert2Type<hs::imgio::whole::ImageData::Byte, float>(img8i);
-	//	ASSERT_EQ(0, ih.SaveImage(jpeg_zoomout_path, img8i));
+		hs::feature2d::ImageHelper::ConvertDataType<hs::imgio::whole::ImageData::Byte, float>(img_gray, img32f);
+	}
 
-	//	img32f.Convert2Type<hs::imgio::whole::ImageData::Byte, float>(img8i);
-	//	ASSERT_EQ(0, ih.SaveImage(jpeg_gs_path, img8i));
-	//}
+	TEST(TestImageHelper, Rgb2GrayOpenCVTest)
+	{
+		std::string data_path = TEST_DATA_PATH;
+		std::string jpeg_path = data_path + "Lenna.jpg"; //输入图片
+		std::string jpeg_gray = "Lenna_gray_cv.jpg";
+		//opencv的灰度转换比对
+		clock_t t0, t1;
+		int res = 0;
+		cv::Mat cvsrc = cv::imread(jpeg_path);
+		t0 = clock();
+		for (int i = 0; i < 5; i++)
+		{
+			cv::Mat cvgry;
+			cv::cvtColor(cvsrc, cvgry, cv::COLOR_BGR2GRAY);
+		}
+		t1 = clock() - t0;
+		std::cout << t1 << " ms in gray-scale converting of OpenCV" << std::endl;
+	}
 
-#define HS_GAUSSIAN_LOOP 1000
+	TEST(TestImageHelper, DataConvertTest)
+	{
+		std::string data_path = TEST_DATA_PATH;
+		std::string jpeg_path = data_path + "Lenna.jpg"; //输入图片
+		std::string jpeg_32f = "Lenna_32f.jpg";
+		
+		hs::imgio::whole::ImageData img_src, img32f, img8i, img_gray;
+		hs::feature2d::ImageHelper ih;
+		ASSERT_EQ(0, ih.LoadImage(jpeg_path, img_src));
+		ih.Rgb2Gray<hs::imgio::whole::ImageData::Byte, hs::imgio::whole::ImageData::Byte>(img_src, img_gray);
+
+		clock_t t0, t1;
+		int res = 0;
+		//数据类型转换压测
+		t0 = clock();
+		for (int i = 0; i < 1000; i++)
+		{
+			ih.ConvertDataType<hs::imgio::whole::ImageData::Byte, float>(img_gray, img32f);
+		}
+		t1 = clock() - t0;
+		std::cout << t1 << " ms in 8u-32f data type converting" << std::endl;
+		ih.ConvertDataType<float, hs::imgio::whole::ImageData::Byte>(img32f, img8i);
+		ASSERT_EQ(0, res);
+		ASSERT_EQ(0, ih.SaveImage(jpeg_32f, img8i));
+	}
+
 	TEST(TestImageHelper, GaussianBlur_HS_Test)
 	{
 		clock_t tt = clock();
@@ -136,12 +175,16 @@ namespace
 		std::cout << t0 << " ms in image reading" << std::endl;
 
 		t0 = clock();
-		int res = hs::feature2d::ImageHelper::Rgb2Gray(img_src, img_gray);
+		int res = hs::feature2d::ImageHelper::Rgb2Gray<hs::imgio::whole::ImageData::Byte, hs::imgio::whole::ImageData::Byte>(img_src, img_gray);
 		t1 = clock() - t0;
 		std::cout << t1 << " ms in gray-scale converting" << std::endl;
 
 		res += ih.SaveImage(jpeg_gray, img_gray);
-		img_gray.Convert2Type<float>(img_32f);
+
+		//数据类型转换
+		//img_gray.Convert2Type<float>(img_32f);
+		ih.ConvertDataType<hs::feature2d::Mat::Byte, float>(img_gray, img_32f);
+
 		hs::feature2d::Mat img8i;
 		img_32f.Convert2Type<hs::feature2d::Mat::Byte, float>(img8i);
 		ih.SaveImage(jpeg_blr8i_path, img8i);
@@ -155,7 +198,7 @@ namespace
 			res = gf.Apply<float, float>(img_32f, img_blur);
 		}
 		t1 = clock() - t0;
-		std::cout << t1 <<" ms in "<<len<<" times bluring process."<<std::endl;
+		std::cout << t1 << " ms in " << len << " times bluring process." << std::endl;
 		img_blur.Convert2Type<hs::feature2d::Mat::Byte, float>(img8i);
 
 		t0 = clock();
@@ -170,13 +213,13 @@ namespace
 
 	//OpenCV的高斯模糊测试
 	TEST(TestImageHelper, GaussianBlur_OpenCV_Test)
-	{		
+	{
 		clock_t tt = clock();
 		std::string data_path = "../../test_data/";
 		std::string jpeg_path = data_path + "Lenna.jpg"; //输入图片
 		std::string jpeg_cv_path = "Lenna_blur_cv.jpg"; //opencv库输出图片
 
-		
+
 		//opencv的cv::GaussianBlur()
 		std::cout << "Time cost: " << std::endl;
 		const char* imgPath = "../../test_data/Lenna.jpg";
@@ -186,7 +229,7 @@ namespace
 		cv::Mat cvsrc = cv::imread(jpeg_path.c_str());
 		t1 = clock() - t0;
 		std::cout << t1 << "ms in image reading" << std::endl;
-		
+
 		t0 = clock();
 		cv::cvtColor(cvsrc, cvgry, cv::COLOR_BGR2GRAY);
 		t1 = clock() - t0;
@@ -209,7 +252,9 @@ namespace
 
 		tt = clock() - tt;
 		std::cout << tt << " ms in whole method call." << std::endl;
-	}
+
+		
+	}	
 
 	/*
 	TEST(TestImageHelper, SiftFuncTest)
