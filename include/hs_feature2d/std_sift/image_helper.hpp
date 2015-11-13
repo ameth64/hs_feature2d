@@ -25,6 +25,74 @@ namespace feature2d
 
 typedef hs::imgio::whole::ImageData Image;
 
+//常用图像操作的functor
+enum
+{
+	yuv_shift = 14,
+	xyz_shift = 12,
+	R2Y = 4899,
+	G2Y = 9617,
+	B2Y = 1868,
+	BLOCK_SIZE = 256
+};
+//参考OpenCVs实现的颜色转换functor
+//根据以下公式转换为灰度(参考MATLAB的rgb2gray函数)
+// 0.2989 * R + 0.5870 * G + 0.1140 * B
+template<typename _Tp> struct RGB2Gray
+{
+	typedef _Tp channel_type;
+
+	RGB2Gray(int _srccn, int blueIdx, const float* _coeffs) : srccn(_srccn)
+	{
+		static const float coeffs0[] = { 0.299f, 0.587f, 0.114f };
+		memcpy(coeffs, _coeffs ? _coeffs : coeffs0, 3 * sizeof(coeffs[0]));
+		if (blueIdx == 0)
+			std::swap(coeffs[0], coeffs[2]);
+	}
+
+	inline void operator()(const _Tp* src, _Tp* dst, int n) const
+	{
+		int scn = srccn;
+		float cb = coeffs[0], cg = coeffs[1], cr = coeffs[2];
+		for (int i = 0; i < n; i++, src += scn)
+			dst[i] = saturate_cast<_Tp>(src[0] * cb + src[1] * cg + src[2] * cr);
+	}
+	int srccn;
+	float coeffs[3];
+};
+
+//对于8位深度的图像数据, 直接使用table lookup加速
+template<> struct RGB2Gray < uchar >
+{
+	typedef uchar channel_type;
+
+	RGB2Gray(int _srccn, int blueIdx, const int* coeffs) : srccn(_srccn)
+	{
+		const int coeffs0[] = { R2Y, G2Y, B2Y };
+		if (!coeffs) coeffs = coeffs0;
+
+		int b = 0, g = 0, r = (1 << (yuv_shift - 1));
+		int db = coeffs[blueIdx ^ 2], dg = coeffs[1], dr = coeffs[blueIdx];
+
+		for (int i = 0; i < 256; i++, b += db, g += dg, r += dr)
+		{
+			tab[i] = b;
+			tab[i + 256] = g;
+			tab[i + 512] = r;
+		}
+	}
+	forceinline void operator()(const uchar* src, uchar* dst, int n) const
+	{
+		int scn = srccn;
+		const int* _tab = tab;
+		for (int i = 0; i < n; i++, src += scn)
+			dst[i] = (uchar)((_tab[src[0]] + _tab[src[1] + 256] + _tab[src[2] + 512]) >> yuv_shift);
+	}
+	int srccn;
+	int tab[256 * 3];
+};
+
+
 class HS_EXPORT ImageHelper: public hs::imgio::whole::ImageIO
 {
 public:
@@ -50,17 +118,6 @@ public:
 	ImageHelper(){};
 	~ImageHelper(){};
 
-	// RGB与灰度图转换
-	template<typename ST, typename DT>
-	static inline int rowRgb2Gray(ST* src, DT* dst, int row_width)
-	{
-		int i = 0;
-		for (; i < row_width; i++)
-		{
-			dst[i] = saturate_cast<DT>(src[i * 3] * 0.2989 + src[i * 3 + 1] * 0.5870 + src[i * 3 + 2] * 0.1140);
-		}
-	}
-
 	template<typename ST, typename DT>
 	static int Rgb2Gray(hs::imgio::whole::ImageData& img_input, hs::imgio::whole::ImageData& img_output)
 	{
@@ -69,42 +126,34 @@ public:
 			// nothing happens if the channel !=3
 			return -1;
 		}
-		int w = img_input.width(), h = img_input.height();
+		int w = img_input.width(), h = img_input.height(), cn = img_input.channel();
 		int res = img_output.CreateImage(h, w, 1, sizeof(DT)*8, hs::imgio::whole::ImageData::IMAGE_GRAYSCALE);
 		if (res != hs::imgio::whole::ImageData::IMAGE_DATA_NO_ERROR)
 		{
 			return -1;
 		}
-		//根据以下公式转换为灰度(参考MATLAB的rgb2gray函数)
-		// 0.2989 * R + 0.5870 * G + 0.1140 * B
+		
 		DT* _outbuff = img_output.GetBufferT<DT>();
 		ST* _inbuff = img_input.GetBufferT<ST>();
-
+		RGB2Gray<ST> rgb2gray(cn, 0, 0);
 		int len = w * h, i = 0;
 #ifdef _OPENMP
-#pragma omp parallel for
-		for (i = 0; i < len; i++)
+#pragma omp parallel
 		{
-			//if (i == 0)
-			//	std::cout << "omp_get_num_threads = " << omp_get_num_threads() << std::endl;
-			_outbuff[i] = saturate_cast<DT>(_inbuff[i * 3] * 0.2989 + _inbuff[i * 3 + 1] * 0.5870 + _inbuff[i * 3 + 2] * 0.1140);
+
+#pragma omp for schedule(dynamic)
+			for (i = 0; i < h; i++)
+			{
+				rgb2gray(_inbuff + i*w*cn, _outbuff + i*w, w);
+				
+			}
 		}
 #else
-		for (i = 0; i < len; i++)
+		for (i = 0; i < h; i++)
 		{
-			_outbuff[i] = saturate_cast<DT>(_inbuff[i * 3] * 0.2989 + _inbuff[i * 3 + 1] * 0.5870 + _inbuff[i * 3 + 2] * 0.1140);
+			rgb2gray(_inbuff + i*w*3, _outbuff + i*w, w);
 		}
-		//for (int i = 0; i < h; i++)
-		//{
-		//	for (int j = 0; j < w; j++)
-		//	{
-		//		R = img_input.GetByte(i, j, 0);
-		//		G = img_input.GetByte(i, j, 1);
-		//		B = img_input.GetByte(i, j, 2);
-		//		tmp = hs::imgio::whole::ImageData::Byte(0.2989 * R + 0.5870 * G + 0.1140 * B);
-		//		_outbuff[i * w + j] = tmp;
-		//	}
-		//}
+
 #endif // _OPENMP
 		return int(OprError::OPR_OK);
 	};
@@ -205,6 +254,7 @@ private:
 	template<typename ST, typename DT> static inline void rowConvert(ST* src, DT* dst, int row_width)
 	{
 		int j = 0;
+#if HS_ENABLE_UNROLLED
 		for (; j <= row_width - 4; j += 4)
 		{
 			dst[j] = saturate_cast<DT>(src[j]);
@@ -212,6 +262,7 @@ private:
 			dst[j + 2] = saturate_cast<DT>(src[j + 2]);
 			dst[j + 3] = saturate_cast<DT>(src[j + 3]);
 		}
+#endif
 		for (; j < row_width; j++)
 		{
 			dst[j] = saturate_cast<DT>(src[j]);
@@ -227,7 +278,7 @@ public:
 		ST* src = (ST*)img_src.GetBuffer();
 		DT* dst = img_dst.GetBufferT<DT>();
 		
-		int row_width = cn * w, i;
+		int row_width = cn * w, i = 0;
 
 #ifdef _OPENMP
 #pragma omp parallel for
@@ -235,6 +286,18 @@ public:
 		{
 			rowConvert<ST, DT>(src + i*row_width, dst + i*row_width, row_width);
 		}
+		//for (i = 0; i <= h-8; i+=8)
+		//{
+		//	rowConvert<ST, DT>(src + i*row_width, dst + i*row_width, row_width);
+		//	rowConvert<ST, DT>(src + (i+1)*row_width, dst + (i+1)*row_width, row_width);
+		//	rowConvert<ST, DT>(src + (i+2)*row_width, dst + (i+2)*row_width, row_width);
+		//	rowConvert<ST, DT>(src + (i+3)*row_width, dst + (i+3)*row_width, row_width);
+		//	rowConvert<ST, DT>(src + (i + 4)*row_width, dst + (i + 4)*row_width, row_width);
+		//	rowConvert<ST, DT>(src + (i + 5)*row_width, dst + (i + 5)*row_width, row_width);
+		//	rowConvert<ST, DT>(src + (i + 6)*row_width, dst + (i + 6)*row_width, row_width);
+		//	rowConvert<ST, DT>(src + (i + 7)*row_width, dst + (i + 7)*row_width, row_width);
+		//}
+		
 #else
 		for (i = 0; i < h; i++, src += row_width, dst += row_width)
 		{

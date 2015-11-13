@@ -80,81 +80,128 @@ namespace
 		}
 	};
 
-#define HS_GAUSSIAN_LOOP 10
+#define HS_GAUSSIAN_LOOP 100
 #define TEST_DATA_PATH "../../test_data/"
 
-	TEST(TestImageHelper, Rgb2GrayTest)
-	{
-		std::string data_path = TEST_DATA_PATH;
-		std::string jpeg_path = data_path + "Lenna.jpg"; //输入图片
-		std::string jpeg_gray = "Lenna_gray.jpg";
+	//TEST(TestImageHelper, Rgb2GrayTest)
+	//{
+	//	std::string data_path = TEST_DATA_PATH;
+	//	std::string jpeg_path = data_path + "Lenna.jpg"; //输入图片
+	//	std::string jpeg_gray = "Lenna_gray.jpg";
 
-		hs::imgio::whole::ImageData img_src, img_src2x, img_src1x2, img_gray, img32f, img32g, img8i;
-		hs::feature2d::ImageHelper ih;
-		ASSERT_EQ(0, ih.LoadImage(jpeg_path, img_src));
+	//	hs::imgio::whole::ImageData img_src, img_src2x, img_src1x2, img_gray, img32f, img32g, img8i;
+	//	hs::feature2d::ImageHelper ih;
+	//	ASSERT_EQ(0, ih.LoadImage(jpeg_path, img_src));
 
-		clock_t t0, t1;
-		int res = 0;
+	//	clock_t t0, t1;
+	//	int res = 0;
 
-		//灰度转换压测
-		t0 = clock();
-		for (int i = 0; i < 1000; i++)
-		{
-			res += ih.Rgb2Gray<hs::imgio::whole::ImageData::Byte, hs::imgio::whole::ImageData::Byte>(img_src, img_gray);
-		}
-		t1 = clock() - t0;
-		std::cout << t1 << " ms in gray-scale converting" << std::endl;
+	//	//灰度转换压测
+	//	t0 = clock();
+	//	for (int i = 0; i < 1000; i++)
+	//	{
+	//		res += ih.Rgb2Gray<hs::imgio::whole::ImageData::Byte, hs::imgio::whole::ImageData::Byte>(img_src, img_gray);
+	//	}
+	//	t1 = clock() - t0;
+	//	std::cout << t1 << " ms in gray-scale converting" << std::endl;
 
-		ASSERT_EQ(0, res);
-		ASSERT_EQ(0, ih.SaveImage(jpeg_gray, img_gray));
+	//	ASSERT_EQ(0, res);
+	//	ASSERT_EQ(0, ih.SaveImage(jpeg_gray, img_gray));
 
-		hs::feature2d::ImageHelper::ConvertDataType<hs::imgio::whole::ImageData::Byte, float>(img_gray, img32f);
-	}
+	//	hs::feature2d::ImageHelper::ConvertDataType<hs::imgio::whole::ImageData::Byte, float>(img_gray, img32f);
+	//}
 
-	TEST(TestImageHelper, Rgb2GrayOpenCVTest)
-	{
-		std::string data_path = TEST_DATA_PATH;
-		std::string jpeg_path = data_path + "Lenna.jpg"; //输入图片
-		std::string jpeg_gray = "Lenna_gray_cv.jpg";
-		//opencv的灰度转换比对
-		clock_t t0, t1;
-		int res = 0;
-		cv::Mat cvsrc = cv::imread(jpeg_path);
-		t0 = clock();
-		for (int i = 0; i < 5; i++)
-		{
-			cv::Mat cvgry;
-			cv::cvtColor(cvsrc, cvgry, cv::COLOR_BGR2GRAY);
-		}
-		t1 = clock() - t0;
-		std::cout << t1 << " ms in gray-scale converting of OpenCV" << std::endl;
-	}
+	//TEST(TestImageHelper, Rgb2GrayOpenCVTest)
+	//{
+	//	std::string data_path = TEST_DATA_PATH;
+	//	std::string jpeg_path = data_path + "Lenna.jpg"; //输入图片
+	//	std::string jpeg_diff_path = data_path + "Lenna_gray_diff.jpg"; //输入图片
+	//	
+	//	//opencv的灰度转换比对
+	//	clock_t t0, t1;
+	//	int res = 0;
+	//	cv::Mat cvsrc = cv::imread(jpeg_path);
+	//	/*t0 = clock();
+	//	for (int i = 0; i < 1000; i++)
+	//	{
+	//	cv::Mat cvgry;
+	//	cv::cvtColor(cvsrc, cvgry, cv::COLOR_BGR2GRAY);
+	//	}
+	//	t1 = clock() - t0;
+	//	std::cout << t1 << " ms in gray-scale converting of OpenCV" << std::endl;*/
 
-	TEST(TestImageHelper, DataConvertTest)
-	{
-		std::string data_path = TEST_DATA_PATH;
-		std::string jpeg_path = data_path + "Lenna.jpg"; //输入图片
-		std::string jpeg_32f = "Lenna_32f.jpg";
-		
-		hs::imgio::whole::ImageData img_src, img32f, img8i, img_gray;
-		hs::feature2d::ImageHelper ih;
-		ASSERT_EQ(0, ih.LoadImage(jpeg_path, img_src));
-		ih.Rgb2Gray<hs::imgio::whole::ImageData::Byte, hs::imgio::whole::ImageData::Byte>(img_src, img_gray);
+	//	cv::Mat cvgry;
+	//	cv::cvtColor(cvsrc, cvgry, cv::COLOR_RGB2GRAY);
+	//	hs::imgio::whole::ImageData img_src, img_gray, img_diff;
+	//	hs::feature2d::ImageHelper ih;
+	//	ASSERT_EQ(0, ih.LoadImage(jpeg_path, img_src));
+	//	ih.Rgb2Gray<hs::imgio::whole::ImageData::Byte, hs::imgio::whole::ImageData::Byte>(img_src, img_gray);
+	//	
+	//	int idx = 0, w = img_gray.width(), h = img_gray.height(), i, j;
+	//	img_diff.CreateImage(w, h, 1);
+	//	uchar *ptr1 = cvgry.data, *ptr2 = img_gray.GetBuffer(), *ptr3 = img_diff.GetBuffer();
+	//	for (i = 0; i < h; i++)
+	//	{
+	//		for (j = 0; j < w; j++)
+	//		{
+	//			idx = i * w + j;
+	//			ptr3[idx] = ptr1[idx] - ptr2[idx];
+	//		}
+	//	}
+	//	ih.SaveImage(jpeg_diff_path, img_diff);
+	//}
 
-		clock_t t0, t1;
-		int res = 0;
-		//数据类型转换压测
-		t0 = clock();
-		for (int i = 0; i < 1000; i++)
-		{
-			ih.ConvertDataType<hs::imgio::whole::ImageData::Byte, float>(img_gray, img32f);
-		}
-		t1 = clock() - t0;
-		std::cout << t1 << " ms in 8u-32f data type converting" << std::endl;
-		ih.ConvertDataType<float, hs::imgio::whole::ImageData::Byte>(img32f, img8i);
-		ASSERT_EQ(0, res);
-		ASSERT_EQ(0, ih.SaveImage(jpeg_32f, img8i));
-	}
+	//TEST(TestImageHelper, DataConvert_HS_Test)
+	//{
+	//	std::string data_path = TEST_DATA_PATH;
+	//	std::string jpeg_path = data_path + "Lenna.jpg"; //输入图片
+	//	std::string jpeg_32f = "Lenna_32f.jpg";
+	//	
+	//	hs::imgio::whole::ImageData img_src, img32f, img8i, img_gray;
+	//	hs::feature2d::ImageHelper ih;
+	//	ASSERT_EQ(0, ih.LoadImage(jpeg_path, img_src));
+	//	ih.Rgb2Gray<hs::imgio::whole::ImageData::Byte, hs::imgio::whole::ImageData::Byte>(img_src, img_gray);
+
+	//	clock_t t0, t1;
+	//	int res = 0;
+	//	//数据类型转换压测
+	//	t0 = clock();
+	//	for (int i = 0; i < 1000; i++)
+	//	{
+	//		ih.ConvertDataType<hs::imgio::whole::ImageData::Byte, float>(img_gray, img32f);
+	//	}
+	//	t1 = clock() - t0;
+	//	std::cout << t1 << " ms in 8u-32f data type converting" << std::endl;
+	//	ih.ConvertDataType<float, hs::imgio::whole::ImageData::Byte>(img32f, img8i);
+	//	ASSERT_EQ(0, res);
+	//	ASSERT_EQ(0, ih.SaveImage(jpeg_32f, img8i));
+	//}
+
+	//TEST(TestImageHelper, DataConvert_CV_Test)
+	//{
+	//	std::string data_path = TEST_DATA_PATH;
+	//	std::string jpeg_path = data_path + "Lenna.jpg"; //输入图片
+	//	std::string jpeg_32f = "Lenna_32f_cv.jpg";
+
+	//	hs::imgio::whole::ImageData img_src, img32f, img8i, img_gray;
+	//	hs::feature2d::ImageHelper ih;
+	//	ASSERT_EQ(0, ih.LoadImage(jpeg_path, img_src));
+	//	ih.Rgb2Gray<hs::imgio::whole::ImageData::Byte, hs::imgio::whole::ImageData::Byte>(img_src, img_gray);
+
+	//	clock_t t0, t1;
+	//	int res = 0;
+	//	//数据类型转换压测
+	//	t0 = clock();
+	//	for (int i = 0; i < 1000; i++)
+	//	{
+	//		ih.ConvertDataType<hs::imgio::whole::ImageData::Byte, float>(img_gray, img32f);
+	//	}
+	//	t1 = clock() - t0;
+	//	std::cout << t1 << " ms in 8u-32f data type converting" << std::endl;
+	//	ih.ConvertDataType<float, hs::imgio::whole::ImageData::Byte>(img32f, img8i);
+	//	ASSERT_EQ(0, res);
+	//	ASSERT_EQ(0, ih.SaveImage(jpeg_32f, img8i));
+	//}
 
 	TEST(TestImageHelper, GaussianBlur_HS_Test)
 	{
@@ -162,18 +209,18 @@ namespace
 
 		std::string data_path = "../../test_data/";
 		std::string jpeg_path = data_path + "Lenna.jpg"; //输入图片
-		std::string jpeg_gray = "Lenna_gray_blur.jpg"; //输入图片
-		std::string jpeg_blr_path = "Lenna_blur.jpg"; //输出图片
-		std::string jpeg_blr8i_path = "Lenna_blur_8i.jpg"; //输出图片
+		std::string jpeg_gray = "Lenna_gray.jpg"; //灰度输出图片
+		std::string jpeg_blr_path = "Lenna_blur.jpg"; //高斯模糊输出图片
 
 		std::cout << "Time cost: " << std::endl;
-		hs::imgio::whole::ImageData img_src, img_gray, img_32f, img_blur;
+		hs::imgio::whole::ImageData img_src, img_gray, img_32f, img_blur, img_8i;
 		hs::feature2d::ImageHelper ih;
 		ih.LoadImage(jpeg_path, img_src);
 
 		clock_t t0 = clock() - tt, t1;
 		std::cout << t0 << " ms in image reading" << std::endl;
 
+		//灰度图转换
 		t0 = clock();
 		int res = hs::feature2d::ImageHelper::Rgb2Gray<hs::imgio::whole::ImageData::Byte, hs::imgio::whole::ImageData::Byte>(img_src, img_gray);
 		t1 = clock() - t0;
@@ -185,10 +232,10 @@ namespace
 		//img_gray.Convert2Type<float>(img_32f);
 		ih.ConvertDataType<hs::feature2d::Mat::Byte, float>(img_gray, img_32f);
 
-		hs::feature2d::Mat img8i;
-		img_32f.Convert2Type<hs::feature2d::Mat::Byte, float>(img8i);
-		ih.SaveImage(jpeg_blr8i_path, img8i);
+		//img_32f.Convert2Type<hs::feature2d::Mat::Byte, float>(img_8i);
+		//ih.SaveImage(jpeg_blr8i_path, img8i);
 
+		// 循环高斯模糊
 		t0 = clock();
 		hs::feature2d::GaussianFilter gf(0.6);
 		gf.SetMask(1.6, 0.0f, 4, 4);
@@ -199,11 +246,12 @@ namespace
 		}
 		t1 = clock() - t0;
 		std::cout << t1 << " ms in " << len << " times bluring process." << std::endl;
-		img_blur.Convert2Type<hs::feature2d::Mat::Byte, float>(img8i);
+		img_blur.Convert2Type<hs::feature2d::Mat::Byte, float>(img_8i);
 
+		//保存图像
 		t0 = clock();
 		ASSERT_EQ(0, res);
-		ASSERT_EQ(0, ih.SaveImage(jpeg_blr_path, img8i));
+		ASSERT_EQ(0, ih.SaveImage(jpeg_blr_path, img_8i));
 		t1 = clock() - t0;
 		std::cout << t1 << "ms in image writing" << std::endl;
 
@@ -211,13 +259,15 @@ namespace
 		std::cout << tt << " ms in whole method call." << std::endl;
 	}
 
+
 	//OpenCV的高斯模糊测试
 	TEST(TestImageHelper, GaussianBlur_OpenCV_Test)
 	{
 		clock_t tt = clock();
 		std::string data_path = "../../test_data/";
 		std::string jpeg_path = data_path + "Lenna.jpg"; //输入图片
-		std::string jpeg_cv_path = "Lenna_blur_cv.jpg"; //opencv库输出图片
+		std::string jpeg_gray_cv_path = "Lenna_gray_cv.jpg"; //opencv库灰度输出图片
+		std::string jpeg_cv_path = "Lenna_blur_cv.jpg"; //opencv库高斯模糊输出图片
 
 
 		//opencv的cv::GaussianBlur()
@@ -230,21 +280,30 @@ namespace
 		t1 = clock() - t0;
 		std::cout << t1 << "ms in image reading" << std::endl;
 
+		//灰度图转换
 		t0 = clock();
 		cv::cvtColor(cvsrc, cvgry, cv::COLOR_BGR2GRAY);
 		t1 = clock() - t0;
 		std::cout << t1 << " ms in gray-scale converting" << std::endl;
 
-		t0 = clock();
+		cv::imwrite(jpeg_gray_cv_path, cvgry);
+
+		//数据格式转换
 		cvgry.convertTo(cv32f, CV_32F, 1, 0);
+
+		//循环高斯模糊
 		int i = 0, len = HS_GAUSSIAN_LOOP;
+		t0 = clock();
+		cv::Mat cvres_;
 		for (; i < len; i++)
 		{
-			cv::GaussianBlur(cv32f, cvres, ksize, 1.6);
+			cv::GaussianBlur(cv32f, cvres_, ksize, 1.6);
 		}
 		t1 = clock() - t0;
 		std::cout << t1 << " ms in " << len << " times bluring process." << std::endl;
 
+		cv::GaussianBlur(cv32f, cvres, ksize, 1.6);
+		//保存图像
 		t0 = clock();
 		ASSERT_EQ(true, cv::imwrite(jpeg_cv_path.c_str(), cvres));
 		t1 = clock() - t0;
@@ -252,10 +311,9 @@ namespace
 
 		tt = clock() - tt;
 		std::cout << tt << " ms in whole method call." << std::endl;
+	}
 
-		
-	}	
-
+	
 	/*
 	TEST(TestImageHelper, SiftFuncTest)
 	{

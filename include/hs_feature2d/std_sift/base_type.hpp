@@ -11,6 +11,24 @@
 #include "hs_feature2d/config/hs_config.hpp"
 #include "hs_image_io/whole_io/image_data.hpp"
 
+#if defined __ICL
+#  define HS_ICC   __ICL
+#elif defined __ICC
+#  define HS_ICC   __ICC
+#elif defined __ECL
+#  define HS_ICC   __ECL
+#elif defined __ECC
+#  define HS_ICC   __ECC
+#elif defined __INTEL_COMPILER
+#  define HS_ICC   __INTEL_COMPILER
+#endif
+
+#if defined HS_ICC && !defined HS_ENABLE_UNROLLED
+#  define HS_ENABLE_UNROLLED 0
+#else
+#  define HS_ENABLE_UNROLLED 1
+#endif
+
 #if (defined _M_X64 && defined _MSC_VER && _MSC_VER >= 1400) || (__GNUC__ >= 4 && defined __x86_64__)
 #  if defined WIN32
 #    include <intrin.h>

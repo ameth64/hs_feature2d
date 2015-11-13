@@ -80,7 +80,7 @@ struct RingBuffer
 	inline int First() { return head; }
 	inline int Last(){ return tail; }
 	inline void Next(int& i){ return (i + 1) % buffLines; }
-	inline T* Line(int i){ return linePtr[ i % buffLines ]; }
+	forceinline T* Line(int i){ return linePtr[ i % buffLines ]; }
 	inline T* OffsetLine(int i){ return linePtr[(i - head) % buffLines]; }
 	inline T* LastLine() { return linePtr[tail]; }
 	inline T* FirstLine() { return linePtr[head]; }
@@ -97,7 +97,7 @@ private:
 template<typename ST, typename DT>
 struct RowFilter
 {
-	void operator()(ST* srcbuff, DT* dst, float* kernal, int& kw, int& w, int& cn)
+	void operator()(ST* srcbuff, DT* dst, float* mask_ptr, int& kw, int& w, int& cn)
 	{
 		int row_size = w * cn, j, k;
 		//初始化目标行元素
@@ -106,9 +106,19 @@ struct RowFilter
 		for (k = 0; k < kw * 2 + 1; k++, srcbuff += cn)
 		{
 			//遍历行元素
-			for (j = 0; j < row_size; j++)
+			j = 0;
+#if HS_ENABLE_UNROLLED
+			for (; j <= row_size - 4; j += 4)
 			{
-				dst[j] += DT(srcbuff[j] * kernal[k]);
+				dst[j] += DT(srcbuff[j] * mask_ptr[k]);
+				dst[j + 1] += DT(srcbuff[j + 1] * mask_ptr[k]);
+				dst[j + 2] += DT(srcbuff[j + 2] * mask_ptr[k]);
+				dst[j + 3] += DT(srcbuff[j + 3] * mask_ptr[k]);
+			}
+#endif
+			for (; j < row_size; j++)
+			{
+				dst[j] += DT(srcbuff[j] * mask_ptr[k]);
 			}
 		}
 	}
@@ -122,8 +132,36 @@ template<> struct RowFilter<float, float>
 #ifdef  _USE_SSE2_
 		int row_width = w*cn, j, k, _ksize = kw * 2 + 1;
 		float* src;
-		__m128 f, s0, s1, x0, x1;
-		for (j = 0; j <= row_width - 8; j += 8)
+		__m128 f, s0, s1, s0_, s1_, x0, x1, x0_, x1_;
+		j = 0;
+#if HS_ENABLE_UNROLLED
+		for (; j <= row_width - 16; j += 16)
+		{
+			src = srcbuff + j;
+			s0 = s1 = s0_ = s1_ = _mm_setzero_ps();
+			for (k = 0; k < _ksize; k++, src += cn)
+			{
+				f = _mm_load_ss(mask_ptr + k);
+				f = _mm_shuffle_ps(f, f, 0);
+
+				x0 = _mm_loadu_ps(src);
+				x1 = _mm_loadu_ps(src + 4);
+				s0 = _mm_add_ps(s0, _mm_mul_ps(x0, f));
+				s1 = _mm_add_ps(s1, _mm_mul_ps(x1, f));
+
+				x0_ = _mm_loadu_ps(src + 8);
+				x1_ = _mm_loadu_ps(src + 12);
+				s0_ = _mm_add_ps(s0_, _mm_mul_ps(x0_, f));
+				s1_ = _mm_add_ps(s1_, _mm_mul_ps(x1_, f));
+			}
+			_mm_store_ps(dst + j, s0);
+			_mm_store_ps(dst + j + 4, s1);
+
+			_mm_store_ps(dst + j + 8, s0_);
+			_mm_store_ps(dst + j + 12, s1_);
+		}
+#endif
+		for (; j <= row_width - 8; j += 8)
 		{
 			src = srcbuff + j;
 			s0 = s1 = _mm_setzero_ps();
@@ -171,13 +209,22 @@ template<> struct RowFilter<float, float>
 		float* src;
 		//初始化目标行元素
 		memset(dst, 0, sizeof(float) * row_size);
-		for (i = 0; i < row_size; i++)
+		for (k = 0; k < kw * 2 + 1; k++, srcbuff += cn)
 		{
-			src = srcbuff + i;
-			dst[i] *= 0;
-			for (k = 0; k < _ksize; k++, src += cn)
+			//遍历行元素
+			j = 0;
+#if HS_ENABLE_UNROLLED
+			for (; j <= row_size - 4; j += 4)
 			{
-				dst[i] += (*src) * kernal[k];
+				dst[j] += srcbuff[j] * mask_ptr[k];
+				dst[j + 1] += srcbuff[j + 1] * mask_ptr[k];
+				dst[j + 2] += srcbuff[j + 2] * mask_ptr[k];
+				dst[j + 3] += srcbuff[j + 3] * mask_ptr[k];
+			}
+#endif
+			for (; j < row_size; j++)
+			{
+				dst[j] += srcbuff[j] * mask_ptr[k];
 			}
 		}
 #endif // _USE_SSE2_
@@ -188,17 +235,27 @@ template<> struct RowFilter<float, float>
 template<typename ST, typename DT>
 struct ColFilter
 {
-	inline void operator()(RingBuffer<float>& ringbuff, float* dst, float* mask_ptr_h, int& idx, int& height_, int& w, int& h, int& cn)
+	inline void operator()(RingBuffer<ST>& ringbuff, DT* dst, float* mask_ptr_h, int& idx, int& height_, int& w, int& h, int& cn)
 	{
 		int row_width = w * cn, j, k, c;
-		float *ptmp;
+		ST *ptmp;
 		memset(dst, 0, row_width * sizeof(DT));
 		for (k = 0; k < height_ * 2 + 1; k++)
 		{
-			c = idx + k - height_ * 2;
+			c = idx + k - height_;
 			c = c < 0 ? -c : (c >= h ? 2 * h - c - 2 : c);
 			ptmp = ringbuff.Line(c);
-			for (j = 0; j < row_width; j++)
+			j = 0;
+#if HS_ENABLE_UNROLLED
+			for (; j <= row_width - 4; j+=4)
+			{
+				dst[j] += mask_ptr_h[k] * ptmp[j];
+				dst[j+1] += mask_ptr_h[k] * ptmp[j+1];
+				dst[j+2] += mask_ptr_h[k] * ptmp[j+2];
+				dst[j+3] += mask_ptr_h[k] * ptmp[j+3];
+			}
+#endif
+			for (; j < row_width; j++)
 			{
 				dst[j] += mask_ptr_h[k] * ptmp[j];
 			}
@@ -207,23 +264,46 @@ struct ColFilter
 };
 
 //针对float类型的SSE加速版本
-template<> struct ColFilter<float, float>
+template<> struct ColFilter< float, float>
 {
 	forceinline void operator()(RingBuffer<float>& ringbuff, float* dst, float* mask_ptr_h, int& idx, int& height_, int& w, int& h, int& cn)
 	{
 #ifdef  _USE_SSE2_
-		int c, j, k, row_width = w * cn;
+		int c, c0 = idx - height_, j, k, row_width = w * cn, r16 = row_width - 16, r8 = row_width - 8, r4 = row_width - 4;
 		float *ptmp;
-		__m128 f, s0, s1, s2, s3, x0, x1;
-		memset(dst, 0, row_width * sizeof(float));
+		__m128 f;
+		__m128 s0, s0_, s1, s1_, s2, s2_, s3, s3_, x0, x1, x0_, x1_;
+
 		for (k = 0; k < height_ * 2 + 1; k++)
 		{
-			c = idx + k - height_ * 2;
+			c = c0 + k;
 			c = c < 0 ? -c : (c >= h ? 2 * h - c - 2 : c);
+			j = 0;
 			ptmp = ringbuff.Line(c);
 			f = _mm_load_ps(mask_ptr_h + k);
 			f = _mm_shuffle_ps(f, f, 0);
-			for (j = 0; j <= row_width - 8; j += 8)
+			for (; j <= r16; j += 16)
+			{
+
+				x0 = _mm_load_ps(ptmp + j);
+				x1 = _mm_load_ps(ptmp + j + 4);
+				s0 = _mm_loadu_ps(dst + j);
+				s1 = _mm_loadu_ps(dst + j + 4);
+				s2 = _mm_add_ps(s0, _mm_mul_ps(x0, f));
+				s3 = _mm_add_ps(s1, _mm_mul_ps(x1, f));
+				_mm_storeu_ps(dst + j, s2);
+				_mm_storeu_ps(dst + j + 4, s3);
+
+				x0_ = _mm_load_ps(ptmp + j + 8);
+				x1_ = _mm_load_ps(ptmp + j + 12);
+				s0_ = _mm_loadu_ps(dst + j + 8);
+				s1_ = _mm_loadu_ps(dst + j + 12);
+				s2_ = _mm_add_ps(s0_, _mm_mul_ps(x0_, f));
+				s3_ = _mm_add_ps(s1_, _mm_mul_ps(x1_, f));
+				_mm_storeu_ps(dst + j + 8, s2_);
+				_mm_storeu_ps(dst + j + 12, s3_);
+			}
+			for (; j <= r8; j += 8)
 			{
 
 				x0 = _mm_load_ps(ptmp + j);
@@ -235,7 +315,7 @@ template<> struct ColFilter<float, float>
 				_mm_storeu_ps(dst + j, s2);
 				_mm_storeu_ps(dst + j + 4, s3);
 			}
-			for (; j <= row_width - 4; j += 4)
+			for (; j <= r4; j += 4)
 			{
 
 				x0 = _mm_load_ps(ptmp + j);
@@ -249,15 +329,25 @@ template<> struct ColFilter<float, float>
 			}
 		}
 #else
-		int c, j, k, row_width = w * cn;
+		int row_width = w * cn, j, k, c;
 		float *ptmp;
 		memset(dst, 0, row_width * sizeof(float));
 		for (k = 0; k < height_ * 2 + 1; k++)
 		{
-			c = idx + k - height_ * 2;
+			c = idx + k - height_;
 			c = c < 0 ? -c : (c >= h ? 2 * h - c - 2 : c);
 			ptmp = ringbuff.Line(c);
-			for (j = 0; j < row_width; j++)
+			j = 0;
+#if HS_ENABLE_UNROLLED
+			for (; j <= row_width - 4; j+=4)
+			{
+				dst[j] += mask_ptr_h[k] * ptmp[j];
+				dst[j+1] += mask_ptr_h[k] * ptmp[j+1];
+				dst[j+2] += mask_ptr_h[k] * ptmp[j+2];
+				dst[j+3] += mask_ptr_h[k] * ptmp[j+3];
+			}
+#endif
+			for (; j < row_width; j++)
 			{
 				dst[j] += mask_ptr_h[k] * ptmp[j];
 			}
@@ -326,7 +416,7 @@ public:
 		}
 
 		// 行滤波缓冲
-		RingBuffer<DT> ringbuff(row_width, std::min(2 * height_ + 1, h));
+		RingBuffer<DT> ringbuff(row_width, std::min(h * height_, h));
 		//行滤波器
 		RowFilter<ST, DT> rFilter;
 		//列滤波器
@@ -336,8 +426,13 @@ public:
 		HeapMgrA<ST> srcBuffRow(row_width + width_ * 2 * cn);
 		ST *srcbuff, *src;
 		DT *dst = NULL, *ptmp = NULL;
+
+		//初始化目标图像
+		dst = img_output.GetBufferT<float>();
+		memset(dst, 0, row_width * h * sizeof(float));
 		
-		mask_ptr = mask_w.GetPtr(), mask_ptr_h = mask_h.GetPtr();;
+		mask_ptr = mask_w.GetPtr(), mask_ptr_h = mask_h.GetPtr();
+//#pragma omp parallel for
 		for (i = 0; i < h; i++)
 		{
 			//设置源图像的缓冲行
@@ -400,6 +495,117 @@ public:
 			for (i = startH; i < h; i++)
 			{
 				dst = img_output.GetLineT<DT>(i);
+				cFilter(ringbuff, dst, mask_ptr_h, i, height_, w, h, cn);
+			}
+		}
+		return res;
+	};
+
+	template<>
+	int Apply<float, float>(const hs::imgio::whole::ImageData& img_input, hs::imgio::whole::ImageData& img_output)
+	{
+		int res = 0;
+		int w = img_input.width(), h = img_input.height(), cn = img_input.channel(), bits = img_input.bit_depth();
+		int row_width = w * cn, row_step = w * cn * sizeof(float);
+		if (w != img_output.width() || h != img_output.height() || cn != img_output.channel() || bits != img_output.bit_depth())
+		{
+			res = img_output.CreateImage(w, h, cn, bits, img_input.color_type(), true);
+		}
+
+		int i, j, k;
+		int c = 0, startH = 0, _ksize = 2 * width_ + 1;
+		float *mask_ptr, *mask_ptr_h;
+
+		//镜像边界的元素索引
+		HeapMgr<int> border_idx(width_ * 2);
+		int *pbdr = border_idx.GetPtr();
+		int border_offset = width_*cn;
+		for (i = 0; i < width_; i++)
+		{
+			pbdr[i] = (width_ - i)*cn, pbdr[i + width_] = row_width - (2 + i)*cn;
+		}
+
+		// 行滤波缓冲
+		int iBuffLine = std::min(2 * height_ + 1, h);
+		RingBuffer<float> ringbuff(row_width, iBuffLine);
+		//行滤波器
+		RowFilter<float, float> rFilter;
+		//列滤波器
+		ColFilter<float, float> cFilter;
+
+		//源与目标图像缓冲行
+		HeapMgrA<float> srcBuffRow(row_width + width_ * 2 * cn);
+		float *srcbuff, *src;
+		float *dst = NULL, *ptmp = NULL;
+
+		//初始化目标图像
+		dst = img_output.GetBufferT<float>();
+		memset(dst, 0, row_width * h * sizeof(float));
+
+		mask_ptr = mask_w.GetPtr(), mask_ptr_h = mask_h.GetPtr();
+		//#pragma omp parallel for
+		for (i = 0; i < h; i++)
+		{
+			//设置源图像的缓冲行
+			srcbuff = srcBuffRow.GetPtr();
+			src = (float*)img_input.GetLine(i);
+			memcpy((void*)(srcbuff + border_offset), (void*)src, row_width * sizeof(float));
+			//设置缓冲行的镜像边界
+			switch (cn)
+			{
+			case 1:
+				for (k = 0; k < width_; k++)
+				{
+					srcbuff[k * cn] = src[pbdr[k] * cn], srcbuff[(border_offset + w + k)*cn] = src[pbdr[k + width_] * cn];
+				}
+				break;
+			case 3:
+				for (k = 0; k < width_; k++)
+				{
+					srcbuff[k * cn] = src[pbdr[k] * cn], srcbuff[(border_offset + w + k)*cn] = src[pbdr[k + width_] * cn];
+					srcbuff[k*cn + 1] = src[pbdr[k] * cn + 1], srcbuff[(border_offset + w + k)*cn + 1] = src[pbdr[k + width_] * cn + 1];
+					srcbuff[k*cn + 2] = src[pbdr[k] * cn + 2], srcbuff[(border_offset + w + k)*cn + 2] = src[pbdr[k + width_] * cn + 2];
+				}
+				break;
+
+			default:
+				for (k = 0; k < width_; k++)
+				{
+					for (j = 0; j < cn; j++)
+					{
+						srcbuff[k*cn + j] = src[pbdr[k] * cn + j], srcbuff[(border_offset + w + k)*cn + j] = src[pbdr[k + width_] * cn + j];
+					}
+				}
+				break;
+			}
+
+			//设置中间环形缓冲行指针
+			if (i >= iBuffLine){
+				ringbuff.Shift();
+				dst = ringbuff.LastLine();
+			}
+			else
+			{
+				dst = ringbuff.Line(i);
+			}
+			//调用行滤波functor
+			rFilter(srcbuff, dst, mask_ptr, width_, w, cn);
+
+			if (i >= height_) //已缓冲足够的行, 可同步开始列滤波
+			{
+				startH = i - height_;
+				dst = img_output.GetLineT<float>(startH);
+				//调用列滤波functor
+				cFilter(ringbuff, dst, mask_ptr_h, startH, height_, w, h, cn);
+			}
+		}
+
+		if (startH < h - 1)
+		{
+			//处理剩余的行
+			for (i = startH + 1; i < h; i++)
+			{
+				dst = img_output.GetLineT<float>(i);
 				cFilter(ringbuff, dst, mask_ptr_h, i, height_, w, h, cn);
 			}
 		}
