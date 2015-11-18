@@ -98,10 +98,6 @@ private:
 	double sigma;
 };
 
-StdSIFT::~StdSIFT()
-{}
-
-
 
 
 }

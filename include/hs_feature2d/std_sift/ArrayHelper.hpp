@@ -126,7 +126,8 @@ class HeapMgrA
 public:
 	HeapMgrA(size_t s) : _ptr((s > 0) ? ( (T*)_aligned_malloc(s*sizeof(T), F2D_PTR_ALIGN) ) : NULL), _size(s)
 	{
-		memset(_ptr, 0, _size*sizeof(T));
+		if (_ptr != NULL)
+			memset(_ptr, 0, _size*sizeof(T));
 	}
 	HeapMgrA(T* t) : _ptr(t), _size(1)
 	{}
@@ -159,13 +160,18 @@ public:
 	~HeapMgrA(){
 		_aop(_ptr);
 	}
+
 	bool Allocate(size_t s = 1){
 		if (s < 1) return false;
-		_aop(_ptr);
-		_size = s;
-		_ptr = (T*)_aligned_malloc(_size * sizeof(T), F2D_PTR_ALIGN);
+		if (s != _size)
+		{
+			_aop(_ptr);
+			_size = s;
+			_ptr = (T*)_aligned_malloc(_size * sizeof(T), F2D_PTR_ALIGN);
+		}
 		return (_ptr != NULL);
-	}
+	};
+
 	T* GetPtr(){ return _ptr; };
 	size_t GetSize(){ return _size; };
 

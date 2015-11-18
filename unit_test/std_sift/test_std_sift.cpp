@@ -80,8 +80,7 @@ namespace
 		}
 	};
 
-#define HS_GAUSSIAN_LOOP 100
-#define TEST_DATA_PATH "../../test_data/"
+#define HS_GAUSSIAN_LOOP 10
 
 	//TEST(TestImageHelper, Rgb2GrayTest)
 	//{
@@ -213,7 +212,7 @@ namespace
 		std::string jpeg_blr_path = "Lenna_blur.jpg"; //高斯模糊输出图片
 
 		std::cout << "Time cost: " << std::endl;
-		hs::imgio::whole::ImageData img_src, img_gray, img_32f, img_blur, img_8i;
+		hs::imgio::whole::ImageData img_src, img_gray, img_32f, img_8i;
 		hs::feature2d::ImageHelper ih;
 		ih.LoadImage(jpeg_path, img_src);
 
@@ -226,27 +225,26 @@ namespace
 		t1 = clock() - t0;
 		std::cout << t1 << " ms in gray-scale converting" << std::endl;
 
-		res += ih.SaveImage(jpeg_gray, img_gray);
+		//res += ih.SaveImage(jpeg_gray, img_gray);
 
 		//数据类型转换
-		//img_gray.Convert2Type<float>(img_32f);
 		ih.ConvertDataType<hs::feature2d::Mat::Byte, float>(img_gray, img_32f);
+		//ih.ConvertDataType<hs::feature2d::Mat::Byte, float>(img_src, img_32f);
 
-		//img_32f.Convert2Type<hs::feature2d::Mat::Byte, float>(img_8i);
-		//ih.SaveImage(jpeg_blr8i_path, img8i);
-
+		std::vector< hs::feature2d::Mat > img_blur(HS_GAUSSIAN_LOOP);
 		// 循环高斯模糊
 		t0 = clock();
-		hs::feature2d::GaussianFilter gf(0.6);
-		gf.SetMask(1.6, 0.0f, 4, 4);
+		hs::feature2d::GaussianFilter<float, float > gf(1.6f, 4, 4);
+		//gf.SetMask(1.6, 0.0f, 4, 4);
+
 		int i = 0, len = HS_GAUSSIAN_LOOP;
 		for (; i < len; i++)
 		{
-			res = gf.Apply<float, float>(img_32f, img_blur);
+			res = gf.Apply(img_32f, img_blur[i]);
 		}
 		t1 = clock() - t0;
 		std::cout << t1 << " ms in " << len << " times bluring process." << std::endl;
-		img_blur.Convert2Type<hs::feature2d::Mat::Byte, float>(img_8i);
+		ih.ConvertDataType<float, hs::feature2d::Mat::Byte>(img_blur[0], img_8i);
 
 		//保存图像
 		t0 = clock();
@@ -260,58 +258,59 @@ namespace
 	}
 
 
-	//OpenCV的高斯模糊测试
-	TEST(TestImageHelper, GaussianBlur_OpenCV_Test)
-	{
-		clock_t tt = clock();
-		std::string data_path = "../../test_data/";
-		std::string jpeg_path = data_path + "Lenna.jpg"; //输入图片
-		std::string jpeg_gray_cv_path = "Lenna_gray_cv.jpg"; //opencv库灰度输出图片
-		std::string jpeg_cv_path = "Lenna_blur_cv.jpg"; //opencv库高斯模糊输出图片
+	////OpenCV的高斯模糊测试
+	//TEST(TestImageHelper, GaussianBlur_OpenCV_Test)
+	//{
+	//	clock_t tt = clock();
+	//	std::string data_path = "../../test_data/";
+	//	std::string jpeg_path = data_path + "Lenna.jpg"; //输入图片
+	//	std::string jpeg_gray_cv_path = "Lenna_gray_cv.jpg"; //opencv库灰度输出图片
+	//	std::string jpeg_cv_path = "Lenna_blur_cv.jpg"; //opencv库高斯模糊输出图片
 
 
-		//opencv的cv::GaussianBlur()
-		std::cout << "Time cost: " << std::endl;
-		const char* imgPath = "../../test_data/Lenna.jpg";
-		cv::Mat cv32f, cvres, cvres2, cvgry;
-		cv::Size ksize(9, 9);
-		clock_t t0 = clock(), t1 = 0;
-		cv::Mat cvsrc = cv::imread(jpeg_path.c_str());
-		t1 = clock() - t0;
-		std::cout << t1 << "ms in image reading" << std::endl;
+	//	//opencv的cv::GaussianBlur()
+	//	std::cout << "Time cost: " << std::endl;
+	//	const char* imgPath = "../../test_data/Lenna.jpg";
+	//	cv::Mat cv32f, cvres, cvres2, cvgry;
+	//	cv::Size ksize(9, 9);
+	//	clock_t t0 = clock(), t1 = 0;
+	//	cv::Mat cvsrc = cv::imread(jpeg_path.c_str());
+	//	t1 = clock() - t0;
+	//	std::cout << t1 << "ms in image reading" << std::endl;
 
-		//灰度图转换
-		t0 = clock();
-		cv::cvtColor(cvsrc, cvgry, cv::COLOR_BGR2GRAY);
-		t1 = clock() - t0;
-		std::cout << t1 << " ms in gray-scale converting" << std::endl;
+	//	//灰度图转换
+	//	t0 = clock();
+	//	cv::cvtColor(cvsrc, cvgry, cv::COLOR_BGR2GRAY);
+	//	t1 = clock() - t0;
+	//	std::cout << t1 << " ms in gray-scale converting" << std::endl;
 
-		cv::imwrite(jpeg_gray_cv_path, cvgry);
+	//	cv::imwrite(jpeg_gray_cv_path, cvgry);
 
-		//数据格式转换
-		cvgry.convertTo(cv32f, CV_32F, 1, 0);
+	//	//数据格式转换
+	//	cvgry.convertTo(cv32f, CV_32F, 1, 0);
 
-		//循环高斯模糊
-		int i = 0, len = HS_GAUSSIAN_LOOP;
-		t0 = clock();
-		cv::Mat cvres_;
-		for (; i < len; i++)
-		{
-			cv::GaussianBlur(cv32f, cvres_, ksize, 1.6);
-		}
-		t1 = clock() - t0;
-		std::cout << t1 << " ms in " << len << " times bluring process." << std::endl;
+	//	//循环高斯模糊
+	//	int i = 0, len = HS_GAUSSIAN_LOOP;
+	//	t0 = clock();
+	//	
+	//	for (; i < len; i++)
+	//	{
+	//		cv::Mat cvres_;
+	//		cv::GaussianBlur(cv32f, cvres_, ksize, 1.6);
+	//	}
+	//	t1 = clock() - t0;
+	//	std::cout << t1 << " ms in " << len << " times bluring process." << std::endl;
 
-		cv::GaussianBlur(cv32f, cvres, ksize, 1.6);
-		//保存图像
-		t0 = clock();
-		ASSERT_EQ(true, cv::imwrite(jpeg_cv_path.c_str(), cvres));
-		t1 = clock() - t0;
-		std::cout << t1 << "ms in image writing" << std::endl;
+	//	cv::GaussianBlur(cv32f, cvres, ksize, 1.6);
+	//	//保存图像
+	//	t0 = clock();
+	//	ASSERT_EQ(true, cv::imwrite(jpeg_cv_path.c_str(), cvres));
+	//	t1 = clock() - t0;
+	//	std::cout << t1 << "ms in image writing" << std::endl;
 
-		tt = clock() - tt;
-		std::cout << tt << " ms in whole method call." << std::endl;
-	}
+	//	tt = clock() - tt;
+	//	std::cout << tt << " ms in whole method call." << std::endl;
+	//}
 
 	
 	/*

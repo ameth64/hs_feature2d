@@ -17,6 +17,9 @@ const float StdSIFT::SIFT_DESCR_SCL_FCTR = 3.f;
 const float StdSIFT::SIFT_DESCR_MAG_THR = 0.2f;
 const float StdSIFT::SIFT_INT_DESCR_FCTR = 512.0f;
 
+StdSIFT::~StdSIFT()
+{}
+
 StdSIFT::StdSIFT(int nf /*= 0*/, int nol /*= 3*/, double ct /*= 0.04*/, double et /*= 10*/, double s /*= 1.6*/)
 	: i_features(nf), i_octave_layer(nol), contrast_threshold(ct), edge_threshold(et), sigma(s)
 {}
@@ -36,19 +39,19 @@ int StdSIFT::createInitialImage(Image& src, Image& dst, bool doubleImageSize, fl
 	if (doubleImageSize)
 	{
 		sig_diff = sqrtf(std::max(sigma * sigma - InitSigma * InitSigma * 4, 0.01f));
-		hs::feature2d::GaussianFilter gsfilter(sig_diff);
+		hs::feature2d::GaussianFilter<SIFT_WORK_TYPE, SIFT_WORK_TYPE > gsfilter(sig_diff);
 		Image dbl;
 		hs::feature2d::ImageHelper::Resize<SIFT_WORK_TYPE>(gray_fpt, dbl, gray_fpt.width() * 2, gray_fpt.height() * 2, hs::feature2d::ImageHelper::INTER_LINEAR);
 		//GaussianBlur(dbl, dbl, Size(), sig_diff, sig_diff);
-		res += gsfilter.Apply<SIFT_WORK_TYPE, SIFT_WORK_TYPE>(dbl, dst);
+		res += gsfilter.Apply(dbl, dst);
 		//return dbl;
 	}
 	else
 	{
 		sig_diff = sqrtf(std::max(sigma * sigma - InitSigma * InitSigma, 0.01f));
-		hs::feature2d::GaussianFilter gsfilter(sig_diff);
+		hs::feature2d::GaussianFilter<SIFT_WORK_TYPE, SIFT_WORK_TYPE > gsfilter(sig_diff);
 		//GaussianBlur(gray_fpt, gray_fpt, Size(), sig_diff, sig_diff);
-		res += gsfilter.Apply<SIFT_WORK_TYPE, SIFT_WORK_TYPE>(gray_fpt, dst);
+		res += gsfilter.Apply(gray_fpt, dst);
 		//return gray_fpt;
 	}
 	return res;
@@ -131,7 +134,7 @@ void StdSIFT::BuildGaussianPyramid(const Image& base, std::vector<Image>& pyr, i
 		sig[i] = std::sqrt(sig_total*sig_total - sig_prev*sig_prev);
 	}
 
-	hs::feature2d::GaussianFilter gsf;
+	hs::feature2d::GaussianFilter<SIFT_WORK_TYPE, SIFT_WORK_TYPE > gsf;
 	for (int o = 0; o < nOctaves; o++)
 	{
 		for (int i = 0; i < i_octave_layer + 3; i++)
@@ -152,7 +155,7 @@ void StdSIFT::BuildGaussianPyramid(const Image& base, std::vector<Image>& pyr, i
 				const Image& src = pyr[o*(i_octave_layer + 3) + i - 1];
 				//GaussianBlur(src, dst, Size(), sig[i], sig[i]);
 				gsf.SetMask(sig[i]);
-				gsf.Apply<SIFT_WORK_TYPE, SIFT_WORK_TYPE>(src, dst);
+				gsf.Apply(src, dst);
 			}
 		}
 	}

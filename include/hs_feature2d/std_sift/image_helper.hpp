@@ -127,7 +127,7 @@ public:
 			return -1;
 		}
 		int w = img_input.width(), h = img_input.height(), cn = img_input.channel();
-		int res = img_output.CreateImage(h, w, 1, sizeof(DT)*8, hs::imgio::whole::ImageData::IMAGE_GRAYSCALE);
+		int res = img_output.CreateImage(w, h, 1, sizeof(DT)*8, hs::imgio::whole::ImageData::IMAGE_GRAYSCALE);
 		if (res != hs::imgio::whole::ImageData::IMAGE_DATA_NO_ERROR)
 		{
 			return -1;
