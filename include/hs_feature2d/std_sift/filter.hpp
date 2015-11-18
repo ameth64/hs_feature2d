@@ -401,14 +401,14 @@ template<> struct ColFilter< float, float>
 		}
 		for (; j < row_width; j++)
 		{
-			ptmp = rbptr[0] + j;
-			dst[j] = ptmp[j] * mask_ptr_h[height_];
+			//ptmp = rbptr[0] + j;
+			dst[j] = *(rbptr[0] + j) * mask_ptr_h[height_];
 			for (k = 1; k <= height_; k++)
 			{
-				ptmp = rbptr[k] + j;
-				ptmp2 = rbptr[-k] + j;
-				dst[j] += ptmp[0] * mask_ptr_h[height_ - k];
-				dst[j] += ptmp2[0] * mask_ptr_h[height_ - k];
+				//ptmp = rbptr[k]+j;
+				//ptmp2 = rbptr[-k]+j;
+				dst[j] += *(rbptr[k] + j) * mask_ptr_h[height_ - k];
+				dst[j] += *(rbptr[-k] + j) * mask_ptr_h[height_ - k];
 			}
 		}
 #else

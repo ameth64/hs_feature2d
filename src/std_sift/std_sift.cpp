@@ -30,7 +30,7 @@ int StdSIFT::createInitialImage(Image& src, Image& dst, bool doubleImageSize, fl
 	int res = 0;
 	Image gray, gray_fpt;
 	if (src.channel() == 3 || src.channel() == 4)
-		res += hs::feature2d::ImageHelper::Rgb2Gray<Image::Byte, Image::Byte>(src, gray);
+		res += hs::feature2d::ImageHelper::Rgb2Gray<Image::Byte>(src, gray);
 	else
 		gray.DeepCopy(src);
 	res += gray.Convert2Type<SIFT_WORK_TYPE>(gray_fpt);

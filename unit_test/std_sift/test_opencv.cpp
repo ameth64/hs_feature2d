@@ -19,7 +19,7 @@ namespace
 #define CV_GAUSSIAN_LOOP 10
 
 	//OpenCV的高斯模糊测试
-	TEST(TestImageHelper, GaussianBlur_OpenCV_Test)
+	TEST(TestOpenCV, GaussianBlur_OpenCV_Test)
 	{
 		clock_t tt = clock();
 		std::string data_path = "../../test_data/";
@@ -40,14 +40,15 @@ namespace
 
 		//灰度图转换
 		t0 = clock();
-		cv::cvtColor(cvsrc, cvgry, cv::COLOR_BGR2GRAY);
+		cv::cvtColor(cvsrc, cvgry, cv::COLOR_RGB2GRAY);
 		t1 = clock() - t0;
 		std::cout << t1 << " ms in gray-scale converting" << std::endl;
 
 		cv::imwrite(jpeg_gray_cv_path, cvgry);
 
 		//数据格式转换
-		cvgry.convertTo(cv32f, CV_32F, 1, 0);
+		//cvgry.convertTo(cv32f, CV_32F, 1, 0);
+		cvsrc.convertTo(cv32f, CV_32F, 1, 0);
 
 		std::vector< cv::Mat > cvres_(CV_GAUSSIAN_LOOP);
 		//循环高斯模糊

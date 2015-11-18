@@ -118,7 +118,7 @@ public:
 	ImageHelper(){};
 	~ImageHelper(){};
 
-	template<typename ST, typename DT>
+	template<typename ST>
 	static int Rgb2Gray(hs::imgio::whole::ImageData& img_input, hs::imgio::whole::ImageData& img_output)
 	{
 		if (img_input.channel() != 3)
@@ -127,13 +127,13 @@ public:
 			return -1;
 		}
 		int w = img_input.width(), h = img_input.height(), cn = img_input.channel();
-		int res = img_output.CreateImage(w, h, 1, sizeof(DT)*8, hs::imgio::whole::ImageData::IMAGE_GRAYSCALE);
+		int res = img_output.CreateImage(w, h, 1, sizeof(ST)*8, hs::imgio::whole::ImageData::IMAGE_GRAYSCALE);
 		if (res != hs::imgio::whole::ImageData::IMAGE_DATA_NO_ERROR)
 		{
 			return -1;
 		}
 		
-		DT* _outbuff = img_output.GetBufferT<DT>();
+		ST* _outbuff = img_output.GetBufferT<ST>();
 		ST* _inbuff = img_input.GetBufferT<ST>();
 		RGB2Gray<ST> rgb2gray(cn, 0, 0);
 		int len = w * h, i = 0;
